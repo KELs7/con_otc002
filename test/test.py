@@ -139,7 +139,4 @@ class MyTestCase(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
-#https://github.com/KELs7/otc-ui.git
-#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
-
 
