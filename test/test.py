@@ -90,17 +90,20 @@ class MyTestCase(unittest.TestCase):
         payout_rswp = 20_000
         payout_marmite = 5_000_000
 
+        endo_perc = ContractingDecimal('0.5')
+        marvin_perc = ContractingDecimal('0.5')
+
         token_list = ["currency", "con_rswp_lst001", "con_marmite100_contract"]
 
         self.otc.payout_owners(signer="endo", token_list=token_list)
         
-        endo_balance_currency = payout_currency * ContractingDecimal('0.6')
-        endo_balance_rswp = payout_rswp * ContractingDecimal('0.6')
-        endo_balance_marmite = payout_marmite * ContractingDecimal('0.6')
+        endo_balance_currency = payout_currency * endo_perc
+        endo_balance_rswp = payout_rswp * endo_perc
+        endo_balance_marmite = payout_marmite * endo_perc
 
-        marvin_balance_currency = payout_currency * ContractingDecimal('0.4')
-        marvin_balance_rswp = payout_rswp * ContractingDecimal('0.4')
-        marvin_balance_marmite = payout_marmite * ContractingDecimal('0.4')
+        marvin_balance_currency = payout_currency * marvin_perc
+        marvin_balance_rswp = payout_rswp * marvin_perc
+        marvin_balance_marmite = payout_marmite * marvin_perc
 
         self.assertEqual(endo_balance_currency, self.currency.balances['endo'])
         self.assertEqual(endo_balance_rswp, self.rswp.balances['endo'])
