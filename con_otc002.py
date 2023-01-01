@@ -11,8 +11,8 @@ payout = Hash(default_value=0)
 @construct
 def init():
     owners.set(["endo", "marvin"])
-    owner_perc['endo'] = decimal('0.6')
-    owner_perc['marvin'] = decimal('0.4')
+    owner_perc['endo'] = decimal('0.5')
+    owner_perc['marvin'] = decimal('0.5')
     supported_tokens.set([
         'currency','con_rswp_lst001',
         'con_weth_lst001', 'con_lusd_lst001',
@@ -102,9 +102,11 @@ def remove_token_support(contract: str):
 @export
 def payout_owners(token_list: list):
 	assert ctx.caller in owners.get(), 'Payout only available for owner'
+
+	if token_list == None: token_list = supported_tokens.get()
 	
 	for token in token_list:
-		if payout[token] > 0:
+		if payout[token] > 0: #what if we encounter a __fixed__ here? ContractingDecimal?
 			for owner in owners.get():
 				payout_amount = owner_perc[owner] * payout[token]  
 				I.import_module(token).transfer(amount=payout_amount, to=owner)
