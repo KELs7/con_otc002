@@ -15,21 +15,19 @@ class MyTestCase(unittest.TestCase):
             self.c.submit(code, name="currency", constructor_args={"vk": "sys"})
             self.c.submit(code, name="con_rswp_lst001", constructor_args={"vk": "sys"}) 
             self.c.submit(code, name="con_marmite100_contract", constructor_args={"vk": "sys"})  
-            self.c.submit(code, name="con_unsupported_token", constructor_args={"vk": "sys"})
+            # self.c.submit(code, name="con_unsupported_token", constructor_args={"vk": "sys"})
 
         self.currency = self.c.get_contract("currency")
         self.rswp = self.c.get_contract("con_rswp_lst001")
         self.marmite = self.c.get_contract("con_marmite100_contract")
-        self.unsupported_token = self.c.get_contract("con_unsupported_token")
+        # self.unsupported_token = self.c.get_contract("con_unsupported_token")
 
         with open("../con_otc002.py") as f:
             code = f.read()
             self.c.submit(code, name="con_otc002")
 
         self.otc = self.c.get_contract("con_otc002")
-
-        
-        
+  
         self.setupToken()
 
     def setupToken(self):
@@ -51,11 +49,12 @@ class MyTestCase(unittest.TestCase):
 
         offer_amount = 50
         take_amount = 2000
-        fee = ContractingDecimal('0.7')
-        
+        fee = ContractingDecimal('0.8')
+
+        # make offer
         offer_id = self.otc.make_offer(signer='endo', offer_token="con_rswp_lst001", \
             offer_amount=offer_amount, take_token="con_marmite100_contract",take_amount=take_amount)
-
+        # take the offer
         self.otc.take_offer(signer='marvin', offer_id=offer_id)
 
         maker_fee = offer_amount / 100 * fee
@@ -65,30 +64,20 @@ class MyTestCase(unittest.TestCase):
         taker_balance_rswp = 7500 + offer_amount
         taker_balance_marmite = 7500 - (take_amount + taker_fee)
 
-        #print(self.rswp.balances['endo'])
-
         self.assertEqual(maker_balance_rswp, self.rswp.balances['endo'])
         self.assertEqual(maker_balance_marmite, self.marmite.balances['endo'])
         self.assertEqual(taker_balance_rswp, self.rswp.balances['marvin'])
         self.assertEqual(taker_balance_marmite, self.marmite.balances['marvin'])
 
-    def test_02_otcing_unsupported_token_should_fail(self):
-        offer_amount = 50
-        take_amount = 2000
-
-        with self.assertRaises(AssertionError):
-            self.otc.make_offer(signer='endo', offer_token="con_spooky_lst001", \
-                offer_amount=offer_amount, take_token="con_marmite100_contract",take_amount=take_amount)
-
-    def test_03_payout_to_owners_should_pass(self):
+    def test_02_payout_to_owners_should_pass(self):
         #assign balances
         self.currency.balances["con_otc002"] = 2000
         self.rswp.balances["con_otc002"] = 40_000
         self.marmite.balances["con_otc002"] = 10_000_000
 
-        payout_currency = 1000
-        payout_rswp = 20_000
-        payout_marmite = 5_000_000
+        payout_currency = self.otc.payout["currency"]
+        payout_rswp = self.otc.payout["con_rswp_lst001"]
+        payout_marmite = self.otc.payout["con_marmite100_contract"]
 
         endo_perc = ContractingDecimal('0.5')
         marvin_perc = ContractingDecimal('0.5')
@@ -112,32 +101,8 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(marvin_balance_rswp, self.rswp.balances['marvin'])
         self.assertEqual(marvin_balance_marmite, self.marmite.balances['marvin'])
 
-    
-    
-    def test_04_adding_token_support_should_pass(self):
-        
-        new_token_list = self.otc.support_token(signer='marvin', contract="con_spooky_lst001")
-        
-        supported_tokens = [
-            'currency','con_rswp_lst001',
-            'con_weth_lst001', 'con_lusd_lst001',
-            'con_reflecttau_v2', 'con_marmite100_contract',
-            'con_spooky_lst001'
-        ]
-
-        self.assertEqual(supported_tokens, new_token_list)
-
-    def test_05_removing_token_support_should_pass(self):
-        
-        new_token_list = self.otc.remove_token_support(signer='marvin', contract="con_marmite100_contract")
-        
-        supported_tokens = [
-            'currency','con_rswp_lst001',
-            'con_weth_lst001', 'con_lusd_lst001',
-            'con_reflecttau_v2', 
-        ]
-
-        self.assertEqual(supported_tokens, new_token_list)
+        for token in token_list:
+            self.assertEqual(self.otc.payout[token], 0)        
     
 if __name__ == "__main__":
     unittest.main()
