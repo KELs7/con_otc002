@@ -2,7 +2,6 @@ random.seed()
 I = importlib
 fee = Variable()
 data = Hash()
-supported_tokens = Variable()
 owners = Variable()
 owner_perc = Hash()
 payout = Hash(default_value=0)
@@ -13,12 +12,7 @@ def init():
     owners.set(["endo", "marvin"])
     owner_perc['endo'] = decimal('0.5')
     owner_perc['marvin'] = decimal('0.5')
-    supported_tokens.set([
-        'currency','con_rswp_lst001',
-        'con_weth_lst001', 'con_lusd_lst001',
-        'con_reflecttau_v2', 'con_marmite100_contract'
-    ])
-    fee.set(decimal('0.7'))
+    fee.set(decimal('0.8'))
     
     # For testing purpose. Should be removed when deployed to mainnet/testnet
     payout["currency"] = 1000
@@ -29,8 +23,6 @@ def init():
 @export
 def make_offer(offer_token: str, offer_amount: float, take_token: str,
     take_amount: float):
-    assert offer_token in supported_tokens.get(), 'Token not supported!'
-    assert take_token in supported_tokens.get(), 'Token not supported!'
     assert offer_amount > 0, 'Negative offer_amount not allowed'
     assert take_amount > 0, 'Negative take_amount not allowed'
     offer_id = hashlib.sha256(str(now) + str(random.randrange(99)))
@@ -79,35 +71,26 @@ def cancel_offer(offer_id: str):
     
 @export
 def adjust_fee(trading_fee: str):
-    assert ctx.caller in owners.get(), 'Only owner can adjust fee'
+    assert_owner()
     assert trading_fee >= 0 and trading_fee <= 10, 'Wrong fee value'
     fee.set(trading_fee)
-
-@export
-def support_token(contract: str):
-    assert ctx.caller in owners.get(), 'Only owner can adjust fee'
-    token_list = supported_tokens.get()
-    assert contract not in token_list, 'Token is already supported'
-    supported_tokens.set(token_list + [contract])
-    return supported_tokens.get()
-    
-@export
-def remove_token_support(contract: str):
-    assert ctx.caller in owners.get(), 'Only owner can adjust fee'
-    token_list = supported_tokens.get()
-    assert contract in token_list, 'Unsupported token cannot be removed'
-    supported_tokens.set([token for token in token_list if token != contract])
-    return supported_tokens.get()
     
 @export
 def payout_owners(token_list: list):
-	assert ctx.caller in owners.get(), 'Payout only available for owner'
+    assert_owner()
 
-	if token_list == None: token_list = supported_tokens.get()
-	
-	for token in token_list:
-		if payout[token] > 0: #what if we encounter a __fixed__ here? ContractingDecimal?
-			for owner in owners.get():
-				payout_amount = owner_perc[owner] * payout[token]  
-				I.import_module(token).transfer(amount=payout_amount, to=owner)
-			payout[token] = 0
+    for token in token_list:
+        if payout[token] > 0: 
+            token_balances = ForeignHash(foreign_contract=token, foreign_name='balances')
+            otc_balance_1 = token_balances[ctx.this]
+            for owner in owners.get():
+                payout_amount = owner_perc[owner] * payout[token]  
+                I.import_module(token).transfer(amount=payout_amount, to=owner)
+        
+            otc_balance_2 = token_balances[ctx.this]
+            pay_out_sum = otc_balance_1 - otc_balance_2
+            payout[token] -= pay_out_sum   
+            
+            
+def assert_owner():
+    assert ctx.caller in owners.get(), 'Only owner can call this method!'
